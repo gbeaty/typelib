@@ -1,52 +1,56 @@
 package typelib
 
 trait HList {
-  type Base
-  type This <: HListOf[Base]
+  type Parent
+  type This <: HListOf[Parent]
 
   val length: Int
 
-  type Map[F[_ <: Base] <: BB,BB] <: HListOf[BB]
-  type FlatMap[F[_ <: Base] <: Box[BB],BB] <: HListOf[BB]
+  type Map[F[_ <: Parent] <: PP,PP] <: HListOf[PP]
+  type FlatMap[F[_ <: Parent] <: Box[PP],PP] <: HListOf[PP]
 
-  type ::[H <: Base] = HNelOf[Base,H,This]
+  type ::[T <: Parent] = HNelOf[Parent,T,This]
 }
-trait HListOf[B] extends HList {
-  type Base = B
-  type This <: HListOf[B]
-
-  // type ::[H <: Base] = HNelOf[Base,H,this.type]
+trait HListOf[P] extends HList with Traversable[P] {
+  type Parent = P
+  type This <: HListOf[P]
 }
-trait HNel[B] extends HListOf[B] {
-  type This = HNelOf[B,Head,Tail]
-  type Head <: B
-  type Tail <: HListOf[B]
+trait HNel[P] extends HListOf[P] {
+  type This = HNelOf[P,Top,Bottom]
+  type Top <: P
+  type Bottom <: HListOf[P]
   
-  val head: Head
-  val tail: Tail
+  val top: Top
+  val bottom: Bottom
 
-  final val length = tail.length + 1
-
-  def ::[HH <: B](nextHead: HH): HNelOf[B,HH,This]
+  def ::[TT <: P](nextTop: TT): HNelOf[P,TT,This]
+  def foreach[U](f: Parent => U) {
+    f(top)
+    bottom.foreach(f)
+  }
 }
-case class HNelOf[B,H <: B, T <: HListOf[B]](head: H, tail: T) extends HNel[B] {  
-  type Head = H
-  type Tail = T
+case class HNelOf[P,T <: P, B <: HListOf[P]](top: T, bottom: B) extends HNel[P] {  
+  type Top = T
+  type Bottom = B
 
-  type Map[F[_ <: B] <: BB,BB] = HNelOf[BB,F[Head],Tail#Map[F,BB]]
+  type Map[F[_ <: P] <: PP,PP] = HNelOf[PP,F[Top],Bottom#Map[F,PP]]
 
-  type FlatMap[F[_ <: B] <: Box[BB],BB] = ({
-    type MapFunc[A <: BB] = HNelOf[BB,A,Tail#FlatMap[F,BB]]
-    type Res = F[Head]#Map[MapFunc,HListOf[BB]]#GetOrElse[Tail#FlatMap[F,BB]]
+  type FlatMap[F[_ <: P] <: Box[PP],PP] = ({
+    type MapFunc[A <: PP] = HNelOf[PP,A,Bottom#FlatMap[F,PP]]
+    type Res = F[Top]#Map[MapFunc,HListOf[PP]]#GetOrElse[Bottom#FlatMap[F,PP]]
   })#Res
 
-  def ::[HH <: B](nextHead: HH) = HNelOf[B,HH,This](nextHead,this)
-}
-case class HNil[B]() extends HListOf[B] {
-  type This = HNil[B]
-  final val length = 0
-  def ::[H <: B](head: H) = HNelOf[B,H,HNil[B]](head,this)
+  def ::[TT <: P](nextHead: TT) = HNelOf[P,TT,This](nextHead,this)
 
-  type Map[F[_ <: B] <: BB,BB] = HNil[BB]
-  type FlatMap[F[_ <: B] <: Box[BB],BB] = HNil[BB]
+  final val length = bottom.length + 1
+}
+case class HNil[P]() extends HListOf[P] {
+  type This = HNil[P]
+  final val length = 0
+  def ::[H <: P](top: H) = HNelOf[P,H,HNil[P]](top,this)
+
+  type Map[F[_ <: P] <: PP,PP] = HNil[PP]
+  type FlatMap[F[_ <: P] <: Box[PP],PP] = HNil[PP]
+
+  def foreach[U](f: Parent => U) = Unit
 }
