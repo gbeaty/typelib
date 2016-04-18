@@ -1,6 +1,6 @@
 package typelib
 
-trait HList {
+sealed trait HList {
   type Parent
   type This <: HListOf[Parent]
 
@@ -10,12 +10,13 @@ trait HList {
   type FlatMap[F[_ <: Parent] <: Box[PP],PP] <: HListOf[PP]
 
   type ::[T <: Parent] = HNelOf[Parent,T,This]
+  def foreach[U](f: Parent => U): Unit
 }
-trait HListOf[P] extends HList with Traversable[P] {
+sealed trait HListOf[P] extends HList with Traversable[P] {
   type Parent = P
   type This <: HListOf[P]
 }
-trait HNel[P] extends HListOf[P] {
+sealed trait HNel[P] extends HListOf[P] {
   type This = HNelOf[P,Top,Bottom]
   type Top <: P
   type Bottom <: HListOf[P]
