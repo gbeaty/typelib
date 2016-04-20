@@ -8,6 +8,7 @@ sealed trait HList {
 
   type Map[F[_ <: Parent] <: PP,PP] <: HListOf[PP]
   type FlatMap[F[_ <: Parent] <: Box[PP],PP] <: HListOf[PP]
+  type Contain[F[_ <: Parent]] <: HListOf[F[_ <: Parent]]
 
   type ::[T <: Parent] = HNelOf[Parent,T,This]
   def foreach[U](f: Parent => U): Unit
@@ -41,6 +42,8 @@ case class HNelOf[P,T <: P, B <: HListOf[P]](top: T, bottom: B) extends HNel[P] 
     type Res = F[Top]#Map[MapFunc,HListOf[PP]]#GetOrElse[Bottom#FlatMap[F,PP]]
   })#Res
 
+  type Contain[F[_ <: Parent]] = HNelOf[F[_ <: Parent],F[T],B#Contain[F]]
+
   def ::[TT <: P](nextHead: TT) = HNelOf[P,TT,This](nextHead,this)
 
   final val length = bottom.length + 1
@@ -52,6 +55,7 @@ case class HNil[P]() extends HListOf[P] {
 
   type Map[F[_ <: P] <: PP,PP] = HNil[PP]
   type FlatMap[F[_ <: P] <: Box[PP],PP] = HNil[PP]
+  type Contain[F[_ <: Parent]] = HNil[F[_ <: Parent]]
 
   def foreach[U](f: Parent => U) = Unit
 }
